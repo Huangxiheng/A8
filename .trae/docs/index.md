@@ -32,16 +32,26 @@
 |---------|----------|------|
 | `/main.do?method=main` | GET | 获取主页面数据 |
 
-### 3. 待办模块 (todo) — 🔲 待实现
+### 3. 待办模块 (todo) — 🔄 部分实现
+- [待办列表页分析](todo/Todo_List_Page_Analysis.md)
 - [待办详情页分析](todo/Todo_Detail_Page_Analysis.md)
 - [待办详情页截图](todo/todo_detail_screenshot.png)
+
+**已实现接口：**
+| API端点 | HTTP方法 | 实现状态 | 对应方法 |
+|---------|----------|----------|----------|
+| `/ajax.do?method=ajaxAction&managerName=colManager` | POST | ✅ 已实现 | `SeeyonClient.getPendingList()` |
 
 **待实现接口：**
 | API端点 | HTTP方法 | 功能 |
 |---------|----------|------|
-| 待办列表查询 | - | 获取当前用户所有待办 |
 | `/collaboration/collaboration.do?method=summary` | GET | 获取待办详情 |
 | `/collaboration/collaboration.do?method=deal` | POST | 提交审批意见 |
+
+**实现要点：**
+- 待办列表查询：通过 AJAX 调用 `colManager` 的 `getPendingList` 方法，支持分页和多种查询条件
+- 查询参数：支持 subject（标题）、importantLevel（重要程度）、createDate（创建日期）等多种过滤条件
+- 响应数据：返回待办事项列表，包含 affairId、subject、startMemberName、receiveTime 等60+字段
 
 ### 4. 流程模块 (process) — 🔲 待实现
 - [流程页面分析](process/Process_Page_Analysis.md)

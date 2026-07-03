@@ -20,6 +20,194 @@ export interface LoginResult {
   sessionId?: string;
 }
 
+/**
+ * 待办事项查询参数
+ */
+export interface PendingListParams {
+  /** 页码，从1开始 */
+  page?: number;
+  /** 每页数量，默认200 */
+  size?: number | string;
+  /** 标题（模糊查询） */
+  subject?: string;
+  /** 重要程度 */
+  importantLevel?: string;
+  /** 创建日期 */
+  createDate?: string;
+  /** 模板名称 */
+  templateName?: string;
+  /** 去重 */
+  deduplication?: string;
+  /** AI处理 */
+  aiProcessing?: string;
+  /** 发起人姓名 */
+  startMemberName?: string;
+  /** 上一处理人姓名 */
+  preApproverName?: string;
+  /** 接收日期 */
+  receiveDate?: string;
+  /** 预期处理时间 */
+  expectprocesstime?: string;
+  /** 子状态 */
+  subState?: string;
+  /** 是否超期 */
+  isOverdue?: string;
+}
+
+/**
+ * 单个待办事项
+ */
+export interface PendingItem {
+  /** 待办ID */
+  affairId: string;
+  /** 标题 */
+  subject: string;
+  /** 发起人姓名 */
+  startMemberName: string;
+  /** 开始日期 */
+  startDate: string;
+  /** 创建日期 */
+  createDate: string;
+  /** 完成日期 */
+  finishDate: string | null;
+  /** 接收时间 */
+  receiveTime: string;
+  /** 节点截止时间名称 */
+  nodeDeadLineName: string;
+  /** 催办次数 */
+  hastenTimes: number;
+  /** 子状态码 */
+  subState: number;
+  /** 流程ID */
+  processId: string;
+  /** 摘要ID */
+  summaryId: string;
+  /** 是否超时 */
+  isCoverTime: boolean;
+  /** 流程是否超时 */
+  processIsCoverTime: boolean;
+  /** 截止日期 */
+  deadLineDate: string;
+  /** 状态 */
+  state: number;
+  /** 正文类型 */
+  bodyType: string;
+  /** 是否有附件 */
+  hasAttsFlag: boolean;
+  /** 是否超级节点 */
+  superNode: boolean;
+  /** 重要级别 */
+  importantLevel: number;
+  /** 是否代理 */
+  proxy: boolean;
+  /** 子状态名称 */
+  subStateName: string;
+  /** 流程截止时间名称 */
+  processDeadLineName: string;
+  /** 流程截止时间 */
+  processDeadline: string | null;
+  /** 是否跟踪 */
+  isTrack: boolean;
+  /** 跟踪类型 */
+  trackType: number;
+  /** 显示权限按钮 */
+  showAuthorityButton: boolean;
+  /** 发起人ID */
+  startMemberId: string;
+  /** 处理时间 */
+  dealTime: string | null;
+  /** 组织账号ID */
+  orgAccountId: string;
+  /** 新流程类型 */
+  newflowType: number;
+  /** 提前提醒 */
+  advanceRemind: string | null;
+  /** 流程是否完成 */
+  flowFinished: boolean;
+  /** 模板ID */
+  templeteId: string;
+  /** 案例ID */
+  caseId: string;
+  /** 是否可删除或归档 */
+  canDeleteORarchive: boolean;
+  /** 工作项ID */
+  workitemId: string;
+  /** 活动ID */
+  activityId: string;
+  /** 当前节点信息 */
+  currentNodesInfo: string;
+  /** 回退来源ID */
+  backFromId: string | null;
+  /** 是否已收藏 */
+  hasFavorite: boolean;
+  /** 是否可转发 */
+  canForward: boolean;
+  /** 回复数量 */
+  replyCounts: number | null;
+  /** 来源ID */
+  fromId: string | null;
+  /** 预期处理时间 */
+  expectedProcessTime: string | null;
+  /** 节点名称 */
+  nodeName: string;
+  /** 待办状态 */
+  affairState: number;
+  /** 上一处理人姓名 */
+  preApproverName: string;
+  /** 摘要状态 */
+  summaryState: number;
+  /** 表单应用ID */
+  formAppId: string;
+  /** 表单查看操作 */
+  formViewOperation: string;
+  /** 表单记录ID */
+  formRecordid: string;
+  /** 是否可移除 */
+  canReMove: boolean;
+  /** 待办归档ID */
+  affairArchiveId: string | null;
+  /** 打印 */
+  print: number;
+  /** 是否已打印 */
+  hasPrint: string;
+  /** 阅读状态 */
+  readState: number;
+  /** 成员ID */
+  memberId: string;
+  /** 待办节点名称 */
+  affairNodeName: string;
+  /** 密级名称 */
+  secretName: string | null;
+  /** 父表单摘要ID */
+  parentformSummaryid: string | null;
+  /** 取消意见策略 */
+  cancelOpinionPolicy: number;
+  /** 不同意意见策略 */
+  disAgreeOpinionPolicy: number;
+  /** 是否可编辑 */
+  canEdit: boolean;
+  /** 是否抢办 */
+  grab: boolean;
+}
+
+/**
+ * 待办列表查询结果
+ */
+export interface PendingListResult {
+  /** 总数 */
+  total: number;
+  /** 总页数 */
+  pages: number;
+  /** 待办列表 */
+  data: PendingItem[];
+  /** 每页数量 */
+  size: number;
+  /** 是否显示总数 */
+  showTotal: boolean;
+  /** 当前页码 */
+  page: number;
+}
+
 export class SeeyonClient {
   private config: Required<SeeyonClientConfig>;
   private axiosInstance: AxiosInstance;
@@ -191,5 +379,85 @@ export class SeeyonClient {
     } catch {
       return 'Asia/Shanghai';
     }
+  }
+
+  /**
+   * 查询待办事项列表
+   * @param params 查询参数
+   * @returns 待办列表结果
+   */
+  async getPendingList(params: PendingListParams = {}): Promise<PendingListResult> {
+    if (!this._sessionId) {
+      throw new Error('请先调用 login() 方法登录');
+    }
+
+    // 构造分页参数
+    const page = params.page ?? 1;
+    const size = params.size ?? 200;
+
+    // 构造查询条件，过滤掉undefined和null值
+    const queryParams: Record<string, string> = {};
+    const queryFields = [
+      'subject',
+      'importantLevel',
+      'createDate',
+      'templateName',
+      'deduplication',
+      'aiProcessing',
+      'startMemberName',
+      'preApproverName',
+      'receiveDate',
+      'expectprocesstime',
+      'subState',
+      'isOverdue',
+    ] as const;
+
+    for (const field of queryFields) {
+      const value = params[field];
+      if (value !== undefined && value !== null) {
+        queryParams[field] = String(value);
+      }
+    }
+
+    // 构造arguments参数
+    const argumentsArray = [
+      { page, size: String(size) },
+      {
+        subject: queryParams.subject ?? '',
+        importantLevel: queryParams.importantLevel ?? '',
+        createDate: queryParams.createDate ?? '',
+        templateName: queryParams.templateName ?? '',
+        deduplication: queryParams.deduplication ?? 'false',
+        aiProcessing: queryParams.aiProcessing ?? 'false',
+        startMemberName: queryParams.startMemberName ?? '',
+        preApproverName: queryParams.preApproverName ?? '',
+        receiveDate: queryParams.receiveDate ?? '',
+        expectprocesstime: queryParams.expectprocesstime ?? '',
+        subState: queryParams.subState ?? '',
+        isOverdue: queryParams.isOverdue ?? '',
+      },
+    ];
+
+    // 构造请求体
+    const formData = new URLSearchParams();
+    formData.append('managerMethod', 'getPendingList');
+    formData.append('arguments', JSON.stringify(argumentsArray));
+
+    // 生成随机数
+    const rnd = Math.floor(Math.random() * 100000);
+
+    // 发送请求
+    const response = await this.axiosInstance.post<PendingListResult>(
+      `/ajax.do?method=ajaxAction&managerName=colManager&rnd=${rnd}`,
+      formData.toString(),
+      {
+        headers: this.buildHeaders({
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          requesttype: 'AJAX',
+        }),
+      }
+    );
+
+    return response.data;
   }
 }
