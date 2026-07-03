@@ -1,0 +1,31 @@
+{
+  "name": "seeyon-a8-client",
+  "version": "1.0.0",
+  "description": "Seeyon A8+ 系统API客户端封装库",
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "example": "tsx examples/example.ts",
+    "test": "tsx test/test-login.ts"
+  },
+  "directories": {
+    "lib": "src/lib",
+    "test": "test",
+    "example": "examples"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.18.1",
+    "crypto-js": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^26.1.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
