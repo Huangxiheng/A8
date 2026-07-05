@@ -139,6 +139,101 @@ const pendingList = await client.getPendingList({
 - 请求日志：method、URL、headers、params、data
 - 响应日志：status、headers、data（字符串超 500 字符截断、对象用 safeStringify、二进制输出类型和大小）
 
+### ✅ 报表表格查询（已完成）
+
+**源码**：`src/lib/seeyon-client.ts`
+
+**参考文档**：`.trae/docs/queryTableResult/Query_Table_Result_Analysis.md`
+
+#### API 接口
+
+```typescript
+// 查询参数
+interface QueryTableResultParams {
+  page?: number;                  // 页码，从1开始，默认 1
+  size?: number;                  // 每页数量，默认 50
+  designId: string;               // 报表设计ID
+  userConditions?: QueryTableCondition[];  // 用户查询条件
+  conditionId?: string;           // 条件ID，默认 ''
+  customOrderFields?: CustomOrderField[];  // 自定义排序字段
+  needTotal?: boolean;            // 是否返回总数，默认 true
+  viewModel?: string;             // 视图模式，默认 'view'
+  extParams?: Record<string, unknown>;    // 扩展参数
+}
+
+// 查询条件
+interface QueryTableCondition {
+  leftChar?: string;              // 左侧字符，默认 ''
+  aliasTableName?: string;        // 别名表名，默认 'formmain_0600_wea'
+  fieldName: string;              // 字段名，如 field0140
+  operation?: string;             // 操作符，默认 'Like'
+  fieldValue: string;             // 字段值
+  rightChar?: string;             // 右侧字符，默认 ''
+  rowOperation?: string;          // 行间操作符，默认 'and'
+}
+
+// 查询结果
+interface QueryTableResult {
+  success: boolean;
+  msg: string | null;
+  fields: QueryTableField[];      // 字段元信息
+  page: number;
+  size: number;
+  pages: number;
+  total: number;
+  data: QueryTableRow[];          // 数据行
+  penetratable: boolean;          // 是否可穿透
+}
+
+// 使用示例
+const result = await client.queryTableResult({
+  designId: PERFORMANCE_TABLE_DESIGN_ID,
+  page: 1,
+  size: 50,
+  userConditions: [
+    {
+      fieldName: PERFORMANCE_TABLE_FIELD.DEV_ORDER_NUMBER,
+      fieldValue: 'KFXQ-CX-2026040100180',
+      operation: 'Like',
+    },
+  ],
+});
+```
+
+#### 实现细节
+
+1. **请求端点**：`POST /ajax.do?method=ajaxAction&managerName=resultAjaxManager&rnd={随机数}`
+2. **请求参数构造**：
+   - `managerMethod`: 固定值 `queryTableResult`
+   - `arguments`: JSON数组 `[查询参数对象]`
+   - 查询参数对象包含：page、size、designId、userConditions、conditionId、customOrderFields、needTotal、viewModel、extParams
+3. **请求头要求**：
+   - `Content-Type`: `application/x-www-form-urlencoded;charset=UTF-8`
+   - `requesttype`: `AJAX`（必需）
+   - `Cookie`: `JSESSIONID=xxx`（必须先登录）
+4. **登录状态检查**：方法内部检查 `sessionId` 是否存在，未登录会抛出错误
+5. **默认值**：
+   - `aliasTableName` 默认 `formmain_0600_wea`（【财信】运维工单全量表-效能 的表别名）
+   - `operation` 默认 `Like`，`rowOperation` 默认 `and`
+   - `leftChar`/`rightChar` 默认空字符串
+
+#### 导出常量与辅助函数
+
+- `PERFORMANCE_TABLE_DESIGN_ID`：`'6387641023490640230'`（【财信】运维工单全量表-效能 报表设计ID）
+- `PERFORMANCE_TABLE_ALIAS`：`'formmain_0600_wea'`（报表表别名）
+- `PERFORMANCE_TABLE_FIELD`：常用查询字段名常量对象
+  - `SOURCE_ORDER_NUMBER` = `'field0125'`（来源工单号）
+  - `OPS_ORDER_NUMBER` = `'field0139'`（运维工单号）
+  - `DEV_ORDER_NUMBER` = `'field0140'`（开发工单号）
+  - `DEFECT_ORDER_NUMBER` = `'field0141'`（缺陷问题单号）
+- `getCellValue(row, field)`：从数据行中按 dataIndex 提取字段值的辅助函数
+
+#### 返回数据结构
+
+- **fields**：字段元信息数组，每项包含 display（显示名）、key（字段键名）、fieldComType（组件类型）、formatType（格式）、dataIndex（列索引）等
+- **data**：数据行数组，每行以 `{ [dataIndex]: { v: 值 } }` 形式存储字段值，可能包含 `rcp`（可穿透标识）和 `rpp`（穿透参数）
+- 字段与数据行的对应关系：`data[i][String(field.dataIndex)].v` 即为该行该字段的值，推荐使用 `getCellValue(row, field)` 取值
+
 ## 项目技术架构
 
 ### 依赖
@@ -162,7 +257,7 @@ const pendingList = await client.getPendingList({
 
 ```
 src/lib/
-├── seeyon-client.ts   # SeeyonClient 类（login, updateSecuritySeed, encryptPassword, extractSessionId, buildHeaders）
+├── seeyon-client.ts   # SeeyonClient 类（login, getPendingList, queryTableResult）+ 报表查询相关类型与常量 + getCellValue 辅助函数
 ├── logger.ts          # setupLogger 拦截器 + safeStringify 工具函数
 └── index.ts           # 导出入口
 ```

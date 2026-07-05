@@ -208,6 +208,170 @@ export interface PendingListResult {
   page: number;
 }
 
+/**
+ * 【财信】运维工单全量表-效能 报表的设计ID
+ */
+export const PERFORMANCE_TABLE_DESIGN_ID = '6387641023490640230';
+
+/**
+ * 【财信】运维工单全量表-效能 报表的表别名
+ */
+export const PERFORMANCE_TABLE_ALIAS = 'formmain_0600_wea';
+
+/**
+ * 【财信】运维工单全量表-效能 报表常用查询字段名
+ * - field0125 来源工单号
+ * - field0139 运维工单号
+ * - field0140 开发工单号
+ * - field0141 缺陷问题单号
+ */
+export const PERFORMANCE_TABLE_FIELD = {
+  SOURCE_ORDER_NUMBER: 'field0125',
+  OPS_ORDER_NUMBER: 'field0139',
+  DEV_ORDER_NUMBER: 'field0140',
+  DEFECT_ORDER_NUMBER: 'field0141',
+} as const;
+
+/**
+ * 报表查询条件
+ */
+export interface QueryTableCondition {
+  /** 左侧字符，通常为 "(" 或 ""，默认 "" */
+  leftChar?: string;
+  /** 别名表名，默认 formmain_0600_wea */
+  aliasTableName?: string;
+  /** 字段名，如 field0140 */
+  fieldName: string;
+  /** 操作符，默认 Like */
+  operation?: string;
+  /** 字段值 */
+  fieldValue: string;
+  /** 右侧字符，通常为 ")" 或 ""，默认 "" */
+  rightChar?: string;
+  /** 行间操作符 "and" / "or"，默认 and */
+  rowOperation?: string;
+}
+
+/**
+ * 报表自定义排序字段
+ */
+export interface CustomOrderField {
+  /** 别名表名 */
+  aliasTableName?: string;
+  /** 字段名 */
+  fieldName: string;
+  /** 排序方式，默认 asc */
+  orderType?: 'asc' | 'desc';
+}
+
+/**
+ * 报表表格查询参数
+ */
+export interface QueryTableResultParams {
+  /** 页码，从1开始，默认 1 */
+  page?: number;
+  /** 每页数量，默认 50 */
+  size?: number;
+  /** 报表设计ID */
+  designId: string;
+  /** 用户查询条件，默认空数组 */
+  userConditions?: QueryTableCondition[];
+  /** 条件ID，默认空字符串 */
+  conditionId?: string;
+  /** 自定义排序字段，默认空数组 */
+  customOrderFields?: CustomOrderField[];
+  /** 是否返回总数，默认 true */
+  needTotal?: boolean;
+  /** 视图模式，默认 view */
+  viewModel?: string;
+  /** 扩展参数，默认空对象 */
+  extParams?: Record<string, unknown>;
+}
+
+/**
+ * 报表字段元信息
+ */
+export interface QueryTableField {
+  /** 显示名 */
+  display: string;
+  /** 字段键名，如 formmain_0600_wea_field0139 */
+  key: string;
+  /** 字段组件类型，如 text、member、datetime、select */
+  fieldComType: string | null;
+  /** 格式类型，如 yyyy-mm-dd */
+  formatType: string | null;
+  /** 是否允许排序 */
+  enableSort: boolean;
+  /** 数据列索引 */
+  dataIndex: number;
+  /** 是否显示 */
+  showOrHide: boolean;
+  /** 是否自动宽度 */
+  autoWidth: boolean;
+  /** 列宽 */
+  width: number | null;
+}
+
+/**
+ * 报表数据行
+ * 键为字段 dataIndex（字符串形式），值为 { v: 任意值 }
+ * 可能包含 rcp（可穿透标识）和 rpp（穿透参数）
+ */
+export interface QueryTableRow {
+  [dataIndex: string]: { v: unknown } | boolean | Record<string, unknown> | undefined;
+  /** 是否可穿透（钻取） */
+  rcp?: boolean;
+  /** 穿透参数 */
+  rpp?: {
+    _weaModelId_?: string;
+    id?: string;
+    _designId_?: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * 报表表格查询结果
+ */
+export interface QueryTableResult {
+  /** 是否成功 */
+  success: boolean;
+  /** 消息 */
+  msg: string | null;
+  /** 字段元信息列表 */
+  fields: QueryTableField[];
+  /** 当前页码 */
+  page: number;
+  /** 每页数量 */
+  size: number;
+  /** 总页数 */
+  pages: number;
+  /** 总数 */
+  total: number;
+  /** 数据行 */
+  data: QueryTableRow[];
+  /** 是否可穿透 */
+  penetratable: boolean;
+}
+
+/**
+ * 从报表数据行中提取指定字段的值
+ * @param row 数据行
+ * @param field 字段元信息或 dataIndex（数字或字符串）
+ * @returns 字段值，不存在时返回 undefined
+ */
+export function getCellValue(
+  row: QueryTableRow,
+  field: QueryTableField | number | string
+): unknown {
+  const dataIndex = typeof field === 'object' ? String(field.dataIndex) : String(field);
+  const cell = row[dataIndex];
+  if (cell && typeof cell === 'object' && !Array.isArray(cell) && 'v' in cell) {
+    return (cell as { v: unknown }).v;
+  }
+  return undefined;
+}
+
 export class SeeyonClient {
   private config: Required<SeeyonClientConfig>;
   private axiosInstance: AxiosInstance;
@@ -449,6 +613,72 @@ export class SeeyonClient {
     // 发送请求
     const response = await this.axiosInstance.post<PendingListResult>(
       `/ajax.do?method=ajaxAction&managerName=colManager&rnd=${rnd}`,
+      formData.toString(),
+      {
+        headers: this.buildHeaders({
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          requesttype: 'AJAX',
+        }),
+      }
+    );
+
+    return response.data;
+  }
+
+  /**
+   * 查询报表表格数据
+   *
+   * 对应 `resultAjaxManager.queryTableResult`，可查询任意 designId 指定的报表。
+   * 查询【财信】运维工单全量表-效能 时可使用 `PERFORMANCE_TABLE_DESIGN_ID` 常量。
+   *
+   * @param params 查询参数
+   * @returns 报表查询结果
+   */
+  async queryTableResult(params: QueryTableResultParams): Promise<QueryTableResult> {
+    if (!this._sessionId) {
+      throw new Error('请先调用 login() 方法登录');
+    }
+
+    const page = params.page ?? 1;
+    const size = params.size ?? 50;
+
+    // 构造查询条件，应用默认值
+    const userConditions = (params.userConditions ?? []).map((c) => ({
+      leftChar: c.leftChar ?? '',
+      aliasTableName: c.aliasTableName ?? PERFORMANCE_TABLE_ALIAS,
+      fieldName: c.fieldName,
+      operation: c.operation ?? 'Like',
+      fieldValue: c.fieldValue,
+      rightChar: c.rightChar ?? '',
+      rowOperation: c.rowOperation ?? 'and',
+    }));
+
+    // 构造 arguments 参数（数组包含一个对象）
+    const argumentsArray = [
+      {
+        page,
+        size,
+        designId: params.designId,
+        userConditions,
+        conditionId: params.conditionId ?? '',
+        customOrderFields: params.customOrderFields ?? [],
+        needTotal: params.needTotal ?? true,
+        viewModel: params.viewModel ?? 'view',
+        extParams: params.extParams ?? {},
+      },
+    ];
+
+    // 构造请求体
+    const formData = new URLSearchParams();
+    formData.append('managerMethod', 'queryTableResult');
+    formData.append('arguments', JSON.stringify(argumentsArray));
+
+    // 生成随机数
+    const rnd = Math.floor(Math.random() * 100000);
+
+    // 发送请求
+    const response = await this.axiosInstance.post<QueryTableResult>(
+      `/ajax.do?method=ajaxAction&managerName=resultAjaxManager&rnd=${rnd}`,
       formData.toString(),
       {
         headers: this.buildHeaders({

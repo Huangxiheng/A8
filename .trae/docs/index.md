@@ -62,14 +62,26 @@
 |---------|----------|------|
 | `/workflowPrediction.do?method=prediction` | GET/POST | 流程预测 |
 
-### 5. 报表模块 (report) — 🔲 待实现
+### 5. 报表模块 (report) — 🔄 部分实现
 - [报表分析页文档](report/Report_Analysis_Page_Analysis.md)
 - [报表分析页截图](report/report_analysis_page.png)
+- [查询报表结果分析](queryTableResult/Query_Table_Result_Analysis.md)
+
+**已实现接口：**
+| API端点 | HTTP方法 | 实现状态 | 对应方法 |
+|---------|----------|----------|----------|
+| `/ajax.do?method=ajaxAction&managerName=resultAjaxManager` | POST | ✅ 已实现 | `SeeyonClient.queryTableResult()` |
 
 **待实现接口：**
 | API端点 | HTTP方法 | 功能 |
 |---------|----------|------|
 | `/vreport/vReport.do?method=vReportView` | GET | 报表视图 |
+
+**实现要点：**
+- 报表表格查询：通过 AJAX 调用 `resultAjaxManager` 的 `queryTableResult` 方法，按 designId 查询指定报表数据
+- 查询参数：designId（报表ID）、page、size、userConditions（查询条件数组，支持 leftChar/aliasTableName/fieldName/operation/fieldValue/rightChar/rowOperation）
+- 内置常量：`PERFORMANCE_TABLE_DESIGN_ID`（【财信】运维工单全量表-效能 报表ID）、`PERFORMANCE_TABLE_FIELD`（常用字段名）
+- 响应数据：返回字段元信息 fields 和数据行 data，数据行以 `{ [dataIndex]: { v: 值 } }` 形式存储，可用 `getCellValue(row, field)` 取值
 
 ## 使用说明
 

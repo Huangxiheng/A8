@@ -102,6 +102,67 @@ API 详情：
 - `safeStringify()`：安全序列化对象为 JSON，使用 WeakSet 处理循环引用
 - 响应体分类处理：字符串直接输出（超 500 字符截断）、对象用 safeStringify、二进制类型输出类型和大小
 
+### 报表表格查询（SeeyonClient.queryTableResult）
+
+查询报表表格数据，支持【财信】运维工单全量表-效能等任意 designId 指定的报表：
+
+```typescript
+import {
+  SeeyonClient,
+  PERFORMANCE_TABLE_DESIGN_ID,
+  PERFORMANCE_TABLE_FIELD,
+  getCellValue,
+} from './src/lib';
+
+const client = new SeeyonClient({ baseURL: 'http://...' });
+await client.login('username', 'password');
+
+// 查询【财信】运维工单全量表-效能，按开发工单号模糊查询
+const result = await client.queryTableResult({
+  designId: PERFORMANCE_TABLE_DESIGN_ID,
+  page: 1,
+  size: 50,
+  userConditions: [
+    {
+      fieldName: PERFORMANCE_TABLE_FIELD.DEV_ORDER_NUMBER, // field0140
+      fieldValue: 'KFXQ-CX-2026040100180',
+      operation: 'Like',
+    },
+  ],
+});
+
+// result.fields 是字段元信息（display/key/dataIndex 等）
+// result.data 是数据行，每行以 { [dataIndex]: { v: 值 } } 形式存储
+for (const row of result.data) {
+  for (const field of result.fields) {
+    const value = getCellValue(row, field); // 取出字段值
+    console.log(`${field.display}: ${value ?? ''}`);
+  }
+}
+```
+
+API 详情：
+
+- **请求端点**：`POST /ajax.do?method=ajaxAction&managerName=resultAjaxManager`
+- **managerMethod**：`queryTableResult`
+- **请求参数**：designId（报表ID）、page、size、userConditions（查询条件数组）、customOrderFields（排序）等
+- **响应数据**：返回字段元信息列表 fields、数据行 data、分页信息（page/size/pages/total）
+
+常用查询字段（`PERFORMANCE_TABLE_FIELD`）：
+
+| 常量                      | 字段名       | 含义     |
+| ------------------------- | ------------ | -------- |
+| `SOURCE_ORDER_NUMBER`     | field0125    | 来源工单号 |
+| `OPS_ORDER_NUMBER`        | field0139    | 运维工单号 |
+| `DEV_ORDER_NUMBER`        | field0140    | 开发工单号 |
+| `DEFECT_ORDER_NUMBER`     | field0141    | 缺陷问题单号 |
+
+实现要点：
+
+- 登录状态检查：方法内部检查 sessionId，未登录抛出错误
+- 默认值：`size` 默认 50，`needTotal` 默认 true，`viewModel` 默认 view，`aliasTableName` 默认 `formmain_0600_wea`
+- 字段取值：数据行以 dataIndex 为键存储 `{ v: 值 }`，使用 `getCellValue(row, field)` 辅助函数安全取值
+
 ## 技术栈
 
 | 技术         | 版本      | 用途       |
@@ -173,16 +234,99 @@ API 详情：
 - **权限信息**：canForward、canEdit、canReMove、canDeleteORarchive
 - **其他信息**：importantLevel、hasAttsFlag、isTrack、hasFavorite等
 
+### QueryTableResultParams
+
+报表表格查询参数接口：
+
+| 属性                | 类型                     | 必填 | 默认值 | 说明                |
+| ------------------- | ------------------------ | ---- | ------ | ------------------- |
+| designId            | string                   | 是   | -      | 报表设计ID          |
+| page                | number                   | 否   | 1      | 页码，从1开始       |
+| size                | number                   | 否   | 50     | 每页数量            |
+| userConditions      | QueryTableCondition[]    | 否   | []     | 用户查询条件        |
+| conditionId         | string                   | 否   | ''     | 条件ID              |
+| customOrderFields   | CustomOrderField[]       | 否   | []     | 自定义排序字段      |
+| needTotal           | boolean                  | 否   | true   | 是否返回总数        |
+| viewModel           | string                   | 否   | 'view' | 视图模式            |
+| extParams           | Record<string, unknown>  | 否   | {}     | 扩展参数            |
+
+### QueryTableCondition
+
+报表查询条件接口：
+
+| 属性           | 类型   | 必填 | 默认值              | 说明                          |
+| -------------- | ------ | ---- | ------------------- | ----------------------------- |
+| fieldName      | string | 是   | -                   | 字段名，如 field0140          |
+| fieldValue     | string | 是   | -                   | 字段值                        |
+| aliasTableName | string | 否   | formmain_0600_wea   | 别名表名                      |
+| operation      | string | 否   | 'Like'              | 操作符                        |
+| leftChar       | string | 否   | ''                  | 左侧字符，通常为 "(" 或 ""    |
+| rightChar      | string | 否   | ''                  | 右侧字符，通常为 ")" 或 ""    |
+| rowOperation   | string | 否   | 'and'               | 行间操作符 "and" / "or"       |
+
+### QueryTableResult
+
+报表查询结果接口：
+
+| 属性          | 类型               | 说明                          |
+| ------------- | ------------------ | ----------------------------- |
+| success       | boolean            | 是否成功                      |
+| msg           | string \| null     | 消息                          |
+| fields        | QueryTableField[]  | 字段元信息列表                |
+| data          | QueryTableRow[]    | 数据行                        |
+| page          | number             | 当前页码                      |
+| size          | number             | 每页数量                      |
+| pages         | number             | 总页数                        |
+| total         | number             | 总数                          |
+| penetratable  | boolean            | 是否可穿透（钻取）            |
+
+### QueryTableField
+
+报表字段元信息接口：
+
+| 属性          | 类型             | 说明                                  |
+| ------------- | ---------------- | ------------------------------------- |
+| display       | string           | 显示名                                |
+| key           | string           | 字段键名，如 formmain_0600_wea_field0139 |
+| fieldComType  | string \| null   | 字段组件类型（text/member/datetime等）|
+| formatType    | string \| null   | 格式类型（yyyy-mm-dd 等）             |
+| enableSort    | boolean          | 是否允许排序                          |
+| dataIndex     | number           | 数据列索引                            |
+| showOrHide    | boolean          | 是否显示                              |
+| autoWidth     | boolean          | 是否自动宽度                          |
+| width         | number \| null   | 列宽                                  |
+
+### 常量与辅助函数
+
+| 名称                            | 类型     | 说明                                              |
+| ------------------------------- | -------- | ------------------------------------------------- |
+| `PERFORMANCE_TABLE_DESIGN_ID`   | string   | 【财信】运维工单全量表-效能 报表设计ID            |
+| `PERFORMANCE_TABLE_ALIAS`       | string   | 【财信】运维工单全量表-效能 报表表别名            |
+| `PERFORMANCE_TABLE_FIELD`       | object   | 常用查询字段名（SOURCE/OPS/DEV/DEFECT_ORDER_NUMBER）|
+| `getCellValue(row, field)`      | function | 从数据行中提取指定字段的值                        |
+
 ### 导出
 
 ```typescript
 export { SeeyonClient } from './seeyon-client';
+export {
+  PERFORMANCE_TABLE_DESIGN_ID,
+  PERFORMANCE_TABLE_ALIAS,
+  PERFORMANCE_TABLE_FIELD,
+  getCellValue,
+} from './seeyon-client';
 export type {
   SeeyonClientConfig,
   LoginResult,
   PendingListParams,
   PendingItem,
   PendingListResult,
+  QueryTableCondition,
+  CustomOrderField,
+  QueryTableResultParams,
+  QueryTableField,
+  QueryTableRow,
+  QueryTableResult,
 } from './seeyon-client';
 export { safeStringify } from './logger';
 ```
