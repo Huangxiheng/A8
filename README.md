@@ -163,6 +163,49 @@ API 详情：
 - 默认值：`size` 默认 50，`needTotal` 默认 true，`viewModel` 默认 view，`aliasTableName` 默认 `formmain_0600_wea`
 - 字段取值：数据行以 dataIndex 为键存储 `{ v: 值 }`，使用 `getCellValue(row, field)` 辅助函数安全取值
 
+### 获取待办详情（SeeyonClient.getTodoDetail）
+
+获取指定待办事项的详情页面，从 JSP 渲染后的 HTML 中提取关键 JavaScript 变量：
+
+```typescript
+import { SeeyonClient, DEFAULT_PORTAL_ID } from './src/lib';
+
+const client = new SeeyonClient({ baseURL: 'http://...' });
+await client.login('username', 'password');
+
+// 1. 先查询待办列表，拿到 affairId
+const pendingList = await client.getPendingList({ page: 1, size: 20 });
+const affairId = pendingList.data[0].affairId;
+
+// 2. 根据 affairId 获取待办详情
+const detail = await client.getTodoDetail({
+  affairId,                    // 必填，来自 getPendingList 返回值
+  // portalId: DEFAULT_PORTAL_ID,  // 可选，默认 -7281551384037538933
+});
+
+// detail 包含从 HTML 中提取的关键变量
+console.log(detail.rightId);            // 权限相关ID
+console.log(detail.templateId);         // 模板ID
+console.log(detail.templateProcessId);  // 模板流程ID
+console.log(detail._summaryProcessId);  // 摘要流程ID
+console.log(detail.zwIframeModuleId);   // 正文iframe模块ID
+console.log(detail._contextProcessId);  // 上下文流程ID
+// detail.rawHtml 保留原始 HTML，便于进一步解析其他变量
+```
+
+API 详情：
+
+- **请求端点**：`GET /collaboration/collaboration.do?method=summary`
+- **请求参数**：affairId（必填，来自待办列表）、portalId（默认 `-7281551384037538933`，可通过 `DEFAULT_PORTAL_ID` 常量引用）、openFrom（默认 `listPending`）、showTab（默认 `true`）
+- **响应数据**：服务器返回 JSP 渲染后的完整 HTML 页面，关键数据以 `var xxx = 'value';` 形式嵌入 `<script>` 块中。封装方法使用正则提取以下变量：rightId、zwIframeModuleId、templateId、templateProcessId、_contextProcessId、_summaryProcessId
+
+实现要点：
+
+- 登录状态检查：方法内部检查 sessionId，未登录抛出错误
+- HTML 解析：通过正则 `var\s+{varName}\s*=\s*['"]([^'"]*)['"]` 从 HTML 提取变量值，未提取到的变量返回 `null`
+- 原始 HTML 保留在 `rawHtml` 字段，便于扩展解析其他变量
+- 请求头携带 `Referer: {baseURL}/main.do?method=main` 以通过服务器校验
+
 ## 技术栈
 
 | 技术         | 版本      | 用途       |
@@ -280,6 +323,33 @@ API 详情：
 | total         | number             | 总数                          |
 | penetratable  | boolean            | 是否可穿透（钻取）            |
 
+### TodoDetailParams
+
+待办详情查询参数接口：
+
+| 属性     | 类型    | 必填 | 默认值                | 说明                                  |
+| -------- | ------- | ---- | --------------------- | ------------------------------------- |
+| affairId | string  | 是   | -                     | 待办ID，来自 getPendingList 返回值    |
+| portalId | string  | 否   | -7281551384037538933  | 门户ID，可用 `DEFAULT_PORTAL_ID` 引用 |
+| openFrom | string  | 否   | listPending           | 打开来源                              |
+| showTab  | boolean | 否   | true                  | 是否显示Tab                           |
+
+### TodoDetailResult
+
+待办详情返回结果接口（从 JSP 渲染的 HTML 中提取的关键 JavaScript 变量）：
+
+| 属性                | 类型             | 说明                |
+| ------------------- | ---------------- | ------------------- |
+| rightId             | string \| null   | 权限相关ID          |
+| zwIframeModuleId    | string \| null   | 正文iframe模块ID    |
+| templateId          | string \| null   | 模板ID              |
+| templateProcessId   | string \| null   | 模板流程ID          |
+| _contextProcessId   | string \| null   | 上下文流程ID        |
+| _summaryProcessId   | string \| null   | 摘要流程ID          |
+| rawHtml             | string           | 原始HTML内容        |
+
+未提取到的变量返回 `null`，可通过 `rawHtml` 字段获取完整 HTML 自行解析其他变量。
+
 ### QueryTableField
 
 报表字段元信息接口：
@@ -303,6 +373,7 @@ API 详情：
 | `PERFORMANCE_TABLE_DESIGN_ID`   | string   | 【财信】运维工单全量表-效能 报表设计ID            |
 | `PERFORMANCE_TABLE_ALIAS`       | string   | 【财信】运维工单全量表-效能 报表表别名            |
 | `PERFORMANCE_TABLE_FIELD`       | object   | 常用查询字段名（SOURCE/OPS/DEV/DEFECT_ORDER_NUMBER）|
+| `DEFAULT_PORTAL_ID`             | string   | 待办详情门户ID固定值（-7281551384037538933）      |
 | `getCellValue(row, field)`      | function | 从数据行中提取指定字段的值                        |
 
 ### 导出
@@ -313,6 +384,7 @@ export {
   PERFORMANCE_TABLE_DESIGN_ID,
   PERFORMANCE_TABLE_ALIAS,
   PERFORMANCE_TABLE_FIELD,
+  DEFAULT_PORTAL_ID,
   getCellValue,
 } from './seeyon-client';
 export type {
@@ -327,6 +399,8 @@ export type {
   QueryTableField,
   QueryTableRow,
   QueryTableResult,
+  TodoDetailParams,
+  TodoDetailResult,
 } from './seeyon-client';
 export { safeStringify } from './logger';
 ```

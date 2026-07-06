@@ -3,6 +3,7 @@ export {
   PERFORMANCE_TABLE_DESIGN_ID,
   PERFORMANCE_TABLE_ALIAS,
   PERFORMANCE_TABLE_FIELD,
+  DEFAULT_PORTAL_ID,
   getCellValue,
 } from './seeyon-client';
 export type {
@@ -17,5 +18,7 @@ export type {
   QueryTableField,
   QueryTableRow,
   QueryTableResult,
+  TodoDetailParams,
+  TodoDetailResult,
 } from './seeyon-client';
 export { safeStringify } from './logger';

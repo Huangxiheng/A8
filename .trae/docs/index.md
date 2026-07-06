@@ -41,17 +41,19 @@
 | API端点 | HTTP方法 | 实现状态 | 对应方法 |
 |---------|----------|----------|----------|
 | `/ajax.do?method=ajaxAction&managerName=colManager` | POST | ✅ 已实现 | `SeeyonClient.getPendingList()` |
+| `/collaboration/collaboration.do?method=summary` | GET | ✅ 已实现 | `SeeyonClient.getTodoDetail()` |
 
 **待实现接口：**
 | API端点 | HTTP方法 | 功能 |
 |---------|----------|------|
-| `/collaboration/collaboration.do?method=summary` | GET | 获取待办详情 |
 | `/collaboration/collaboration.do?method=deal` | POST | 提交审批意见 |
 
 **实现要点：**
 - 待办列表查询：通过 AJAX 调用 `colManager` 的 `getPendingList` 方法，支持分页和多种查询条件
 - 查询参数：支持 subject（标题）、importantLevel（重要程度）、createDate（创建日期）等多种过滤条件
 - 响应数据：返回待办事项列表，包含 affairId、subject、startMemberName、receiveTime 等60+字段
+- 待办详情查询：调用 `collaboration.do?method=summary`，传入 affairId（来自待办列表）和固定 portalId（`DEFAULT_PORTAL_ID = -7281551384037538933`）
+- 待办详情响应：服务器返回 JSP 渲染后的 HTML，关键数据以 `var xxx = 'value';` 嵌入 `<script>` 块，封装方法用正则提取 rightId、zwIframeModuleId、templateId、templateProcessId、_contextProcessId、_summaryProcessId 等变量，原始 HTML 保留在 rawHtml 字段
 
 ### 4. 流程模块 (process) — 🔲 待实现
 - [流程页面分析](process/Process_Page_Analysis.md)

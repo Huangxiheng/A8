@@ -234,6 +234,83 @@ const result = await client.queryTableResult({
 - **data**：数据行数组，每行以 `{ [dataIndex]: { v: 值 } }` 形式存储字段值，可能包含 `rcp`（可穿透标识）和 `rpp`（穿透参数）
 - 字段与数据行的对应关系：`data[i][String(field.dataIndex)].v` 即为该行该字段的值，推荐使用 `getCellValue(row, field)` 取值
 
+### ✅ 获取待办详情（已完成）
+
+**源码**：`src/lib/seeyon-client.ts`
+
+**参考文档**：`.trae/docs/todo/Todo_Detail_Page_Analysis.md`
+
+#### API 接口
+
+```typescript
+// 查询参数
+interface TodoDetailParams {
+  /** 待办ID（必填，来自 getPendingList 返回值 PendingItem.affairId） */
+  affairId: string;
+  /** 门户ID，默认 -7281551384037538933 */
+  portalId?: string;
+  /** 打开来源，默认 listPending */
+  openFrom?: string;
+  /** 是否显示Tab，默认 true */
+  showTab?: boolean;
+}
+
+// 返回结果
+interface TodoDetailResult {
+  rightId: string | null;              // 权限相关ID
+  zwIframeModuleId: string | null;     // 正文iframe模块ID
+  templateId: string | null;           // 模板ID
+  templateProcessId: string | null;    // 模板流程ID
+  _contextProcessId: string | null;    // 上下文流程ID
+  _summaryProcessId: string | null;    // 摘要流程ID
+  rawHtml: string;                     // 原始HTML内容
+}
+
+// 使用示例
+const detail = await client.getTodoDetail({
+  affairId: '3344759701310554803',  // 来自 getPendingList 返回值
+});
+console.log(detail.rightId);
+console.log(detail.templateId);
+```
+
+#### 实现细节
+
+1. **请求端点**：`GET /collaboration/collaboration.do?method=summary&openFrom=listPending&affairId={affairId}&showTab=true&portalId={portalId}`
+2. **URL 查询参数构造**：
+   - `method`: 固定值 `summary`
+   - `openFrom`: 默认 `listPending`
+   - `affairId`: 必填，来自待办列表 `getPendingList` 返回值
+   - `showTab`: 默认 `true`
+   - `portalId`: 固定值 `-7281551384037538933`，通过常量 `DEFAULT_PORTAL_ID` 提供
+3. **请求头要求**：
+   - `Accept`: `text/html,application/xhtml+xml,application/xml;q=0.9,...`
+   - `Referer`: `{baseURL}/main.do?method=main`
+   - `Cookie`: `JSESSIONID=xxx`（必须先登录）
+4. **响应处理**：
+   - 服务器返回 JSP 编译后的 HTML 页面（含 CSS、JS），设置 `responseType: 'text'` 确保以字符串形式接收
+   - 关键数据嵌入在 `<script type="text/javascript">` 块中，通过 `var xxx = 'value';` 形式声明
+   - 使用正则 `var\s+{varName}\s*=\s*['"]([^'"]*)['"]` 从 HTML 中提取变量值
+5. **登录状态检查**：方法内部检查 `sessionId` 是否存在，未登录会抛出错误
+
+#### 导出常量
+
+- `DEFAULT_PORTAL_ID`：`'-7281551384037538933'`（待办详情门户ID固定值）
+
+#### 返回字段说明
+
+| 字段                 | 类型   | 说明                  |
+| -------------------- | ------ | --------------------- |
+| `rightId`            | string \| null | 权限相关ID            |
+| `zwIframeModuleId`   | string \| null | 正文iframe模块ID      |
+| `templateId`         | string \| null | 模板ID                |
+| `templateProcessId`  | string \| null | 模板流程ID            |
+| `_contextProcessId`  | string \| null | 上下文流程ID          |
+| `_summaryProcessId`  | string \| null | 摘要流程ID            |
+| `rawHtml`            | string | 原始HTML内容，便于进一步解析其他变量 |
+
+未提取到的变量返回 `null`，可通过 `rawHtml` 字段获取完整 HTML 自行解析其他变量。
+
 ## 项目技术架构
 
 ### 依赖
@@ -257,7 +334,7 @@ const result = await client.queryTableResult({
 
 ```
 src/lib/
-├── seeyon-client.ts   # SeeyonClient 类（login, getPendingList, queryTableResult）+ 报表查询相关类型与常量 + getCellValue 辅助函数
+├── seeyon-client.ts   # SeeyonClient 类（login, getPendingList, queryTableResult, getTodoDetail）+ 报表查询相关类型与常量 + 待办详情相关类型与常量 + getCellValue 辅助函数
 ├── logger.ts          # setupLogger 拦截器 + safeStringify 工具函数
 └── index.ts           # 导出入口
 ```
@@ -268,6 +345,7 @@ src/lib/
 2. **加密种子与 Session 绑定**：updateLoginSeed 返回的加密种子与服务器端 session 绑定，登录请求必须携带从 updateLoginSeed 响应获取的 JSESSIONID。
 3. **302 重定向的登录响应**：登录 POST 返回 302 状态码，响应体为空，需通过 `loginok` 响应头判断登录结果。
 4. **顶层 await**：`tsx` 在 commonjs 模式下不支持顶层 await，示例代码需使用 async IIFE 包装。
+5. **待办详情返回 HTML 而非 JSON**：`/collaboration/collaboration.do?method=summary` 返回的是 JSP 渲染后的完整 HTML 页面，关键数据以 `var xxx = 'value';` 形式嵌入 `<script>` 块中。需设置 `responseType: 'text'` 接收字符串，再用正则 `var\s+{varName}\s*=\s*['"]([^'"]*)['"]` 提取变量值。未提取到的变量返回 `null`，原始 HTML 保留在 `rawHtml` 字段便于扩展解析。
 
 ## 后续开发计划
 

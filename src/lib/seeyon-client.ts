@@ -355,6 +355,48 @@ export interface QueryTableResult {
 }
 
 /**
+ * 待办详情门户ID固定值
+ */
+export const DEFAULT_PORTAL_ID = '-7281551384037538933';
+
+/**
+ * 待办详情查询参数
+ */
+export interface TodoDetailParams {
+  /** 待办ID（必填，来自 getPendingList 返回值 PendingItem.affairId） */
+  affairId: string;
+  /** 门户ID，默认 -7281551384037538933 */
+  portalId?: string;
+  /** 打开来源，默认 listPending */
+  openFrom?: string;
+  /** 是否显示Tab，默认 true */
+  showTab?: boolean;
+}
+
+/**
+ * 待办详情返回结果
+ *
+ * 从 `/collaboration/collaboration.do?method=summary` 返回的 JSP 渲染 HTML 中
+ * 提取的关键 JavaScript 变量。原始 HTML 保存于 rawHtml 字段，便于进一步解析。
+ */
+export interface TodoDetailResult {
+  /** rightId - 权限相关ID */
+  rightId: string | null;
+  /** 正文iframe模块ID */
+  zwIframeModuleId: string | null;
+  /** 模板ID */
+  templateId: string | null;
+  /** 模板流程ID */
+  templateProcessId: string | null;
+  /** 上下文流程ID */
+  _contextProcessId: string | null;
+  /** 摘要流程ID */
+  _summaryProcessId: string | null;
+  /** 原始HTML内容，便于进一步解析其他变量 */
+  rawHtml: string;
+}
+
+/**
  * 从报表数据行中提取指定字段的值
  * @param row 数据行
  * @param field 字段元信息或 dataIndex（数字或字符串）
@@ -689,5 +731,75 @@ export class SeeyonClient {
     );
 
     return response.data;
+  }
+
+  /**
+   * 获取待办详情
+   *
+   * 调用 `/collaboration/collaboration.do?method=summary` 接口，返回 JSP 渲染后的
+   * HTML 页面，从中提取关键 JavaScript 变量（如 rightId、templateId 等）。
+   *
+   * @param params 查询参数，affairId 必填（来自 getPendingList 返回值）
+   * @returns 待办详情结果，包含从 HTML 中提取的关键变量和原始 HTML
+   */
+  async getTodoDetail(params: TodoDetailParams): Promise<TodoDetailResult> {
+    if (!this._sessionId) {
+      throw new Error('请先调用 login() 方法登录');
+    }
+
+    const affairId = params.affairId;
+    const portalId = params.portalId ?? DEFAULT_PORTAL_ID;
+    const openFrom = params.openFrom ?? 'listPending';
+    const showTab = params.showTab ?? true;
+
+    // 构造查询参数
+    const query = new URLSearchParams();
+    query.append('method', 'summary');
+    query.append('openFrom', openFrom);
+    query.append('affairId', affairId);
+    query.append('showTab', String(showTab));
+    query.append('portalId', portalId);
+
+    // 发送 GET 请求，responseType: text 确保 HTML 以字符串形式返回
+    const response = await this.axiosInstance.get<string>(
+      `/collaboration/collaboration.do?${query.toString()}`,
+      {
+        responseType: 'text',
+        headers: this.buildHeaders({
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          Referer: `${this.config.baseURL}/main.do?method=main`,
+        }),
+      }
+    );
+
+    const html = typeof response.data === 'string' ? response.data : String(response.data);
+
+    // 从 HTML 的 <script> 块中提取关键 JavaScript 变量
+    return {
+      rightId: this.extractScriptVar(html, 'rightId'),
+      zwIframeModuleId: this.extractScriptVar(html, 'zwIframeModuleId'),
+      templateId: this.extractScriptVar(html, 'templateId'),
+      templateProcessId: this.extractScriptVar(html, 'templateProcessId'),
+      _contextProcessId: this.extractScriptVar(html, '_contextProcessId'),
+      _summaryProcessId: this.extractScriptVar(html, '_summaryProcessId'),
+      rawHtml: html,
+    };
+  }
+
+  /**
+   * 从 HTML 中提取 JavaScript 变量的值
+   *
+   * 匹配 `var varName = 'value';` 或 `var varName = "value";` 形式的声明，
+   * 单引号或双引号均可，变量名前后允许任意空白字符。
+   *
+   * @param html HTML 内容
+   * @param varName 变量名
+   * @returns 变量值，未找到返回 null
+   */
+  private extractScriptVar(html: string, varName: string): string | null {
+    const regex = new RegExp(`var\\s+${varName}\\s*=\\s*['"]([^'"]*)['"]`);
+    const match = html.match(regex);
+    return match ? match[1] : null;
   }
 }
