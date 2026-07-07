@@ -6,6 +6,7 @@ import {
   QueryTableResult,
   QueryTableField,
   QueryTableRow,
+  logger,
 } from '../src/lib';
 import ExcelJS from 'exceljs';
 import path from 'path';
@@ -154,32 +155,32 @@ async function queryCode(
   // 1. 首先尝试根据前缀进行主查询
   const primaryField = getFieldByPrefix(code);
   if (primaryField) {
-    console.log(`  [主查询] 使用字段 ${primaryField} 查询: ${code}`);
+    logger.info(`  [主查询] 使用字段 ${primaryField} 查询: ${code}`);
     const result = await queryByField(client, primaryField, code);
     if (result.data.length > 0) {
-      console.log(`  [主查询] 成功，找到 ${result.data.length} 条记录`);
+      logger.info(`  [主查询] 成功，找到 ${result.data.length} 条记录`);
       return { result, queryType: 'primary', matchedField: primaryField };
     }
-    console.log(`  [主查询] 无结果，尝试回退查询...`);
+    logger.info(`  [主查询] 无结果，尝试回退查询...`);
   }
 
   // 2. 回退查询：使用末尾数字轮流查询四个字段
   const trailingNumber = extractTrailingNumber(code);
-  console.log(`  [回退查询] 使用末尾数字 "${trailingNumber}" 轮流查询...`);
+  logger.info(`  [回退查询] 使用末尾数字 "${trailingNumber}" 轮流查询...`);
 
   for (const fieldName of ALL_QUERY_FIELDS) {
-    console.log(`  [回退查询] 尝试字段 ${fieldName}...`);
+    logger.info(`  [回退查询] 尝试字段 ${fieldName}...`);
     const result = await queryByField(client, fieldName, trailingNumber);
     if (result.data.length === 1) {
-      console.log(`  [回退查询] 命中，找到 1 条记录`);
+      logger.info(`  [回退查询] 命中，找到 1 条记录`);
       return { result, queryType: 'fallback', matchedField: fieldName };
     } else if (result.data.length > 1) {
-      console.log(`  [回退查询] 找到 ${result.data.length} 条记录（多条，跳过）`);
+      logger.info(`  [回退查询] 找到 ${result.data.length} 条记录（多条，跳过）`);
       // 多条结果，继续尝试其他字段
     }
   }
 
-  console.log(`  [查询失败] 未找到匹配记录`);
+  logger.info(`  [查询失败] 未找到匹配记录`);
   return { result: null, queryType: 'none', matchedField: null };
 }
 
@@ -195,18 +196,18 @@ async function main() {
   });
 
   // 登录
-  console.log('========================================');
-  console.log('正在登录...');
+  logger.info('========================================');
+  logger.info('正在登录...');
   const loginResult = await client.login('1000664', 'qwer1234!');
-  console.log('登录结果:', loginResult);
+  logger.info(`登录结果: ${JSON.stringify(loginResult)}`);
   if (!loginResult.success) {
-    console.error('登录失败，程序退出');
+    logger.error('登录失败，程序退出');
     return;
   }
-  console.log('========================================\n');
+  logger.info('========================================');
 
   // 读取输入的 Excel 文件
-  console.log(`读取输入文件: ${INPUT_FILE_PATH}`);
+  logger.info(`读取输入文件: ${INPUT_FILE_PATH}`);
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(INPUT_FILE_PATH);
@@ -214,13 +215,13 @@ async function main() {
   // 获取第一个工作表
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
-    console.error('Excel 文件中没有工作表');
+    logger.error('Excel 文件中没有工作表');
     return;
   }
 
   // 获取总行数（包含表头）
   const rowCount = worksheet.rowCount;
-  console.log(`总行数: ${rowCount}\n`);
+  logger.info(`总行数: ${rowCount}`);
 
   // 添加新列（从第8列开始，索引为7）：提出日期、当前待办人、当前待办节点、开发人员、修改时间_系统
   // 第8列对应索引7，依次添加5列
@@ -244,46 +245,46 @@ async function main() {
     const code = String(codeCell.value || '').trim();
 
     if (!code) {
-      console.log(`第 ${rowNum} 行: 第三列为空，跳过`);
+      logger.info(`第 ${rowNum} 行: 第三列为空，跳过`);
       continue;
     }
 
-    console.log(`\n========================================`);
-    console.log(`处理第 ${rowNum} 行: ${code}`);
+    logger.info(`========================================`);
+    logger.info(`处理第 ${rowNum} 行: ${code}`);
 
     // 查询单号
     const { result, queryType, matchedField } = await queryCode(client, code);
 
     // 处理查询结果
     if (!result || result.data.length === 0) {
-      console.log(`  未找到数据，保持单元格为空`);
+      logger.info(`  未找到数据，保持单元格为空`);
       // 保持单元格为空（不做任何操作）
       continue;
     }
 
     if (result.data.length > 1) {
-      console.log(`  找到 ${result.data.length} 条记录，多条结果暂不处理（后续补充逻辑）`);
+      logger.info(`  找到 ${result.data.length} 条记录，多条结果暂不处理（后续补充逻辑）`);
       // 多条结果，保持空（后续补充处理逻辑）
       continue;
     }
 
     // 单条结果，正常处理：提取字段值并填入表格
     const dataRow = result.data[0];
-    console.log(`  找到 1 条记录，填充数据...`);
+    logger.info(`  找到 1 条记录，填充数据...`);
 
     TARGET_FIELDS.forEach((targetField, i) => {
       const value = extractFieldValue(dataRow, result.fields, targetField);
       const cell = row.getCell(startColIndex + i + 1);
       cell.value = value;
-      console.log(`    ${targetField}: ${value}`);
+      logger.info(`    ${targetField}: ${value}`);
     });
   }
 
   // 保存结果文件
   await workbook.xlsx.writeFile(OUTPUT_FILE_PATH);
-  console.log(`\n========================================`);
-  console.log(`处理完成！`);
-  console.log(`输出文件: ${OUTPUT_FILE_PATH}`);
+  logger.info(`========================================`);
+  logger.info(`处理完成！`);
+  logger.info(`输出文件: ${OUTPUT_FILE_PATH}`);
 }
 
-main().catch(console.error);
+main().catch((err) => logger.error(err));

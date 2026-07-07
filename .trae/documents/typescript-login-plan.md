@@ -134,10 +134,23 @@ const pendingList = await client.getPendingList({
 
 **源码**：`src/lib/logger.ts`
 
-- `setupLogger(axiosInstance)` — 为 axios 实例安装请求/响应日志拦截器
+基于 [winston](https://github.com/winstonjs/winston) 日志框架实现，通过 [dotenv](https://github.com/motdotla/dotenv) 加载 `.env` 环境配置文件控制日志输出。
+
+- `setupLogger(axiosInstance)` — 为 axios 实例安装请求/响应日志拦截器，日志通过 winston logger 输出
 - `safeStringify(obj, space?)` — 安全序列化对象为 JSON，使用 WeakSet 处理循环引用，处理二进制类型（ArrayBuffer/Buffer/Stream）
+- `logger` — 全局 winston 日志实例，可在业务代码中直接使用（`logger.info/error/debug/...`）
+- `loadLogConfig()` — 从环境变量加载日志配置
 - 请求日志：method、URL、headers、params、data
 - 响应日志：status、headers、data（字符串超 500 字符截断、对象用 safeStringify、二进制输出类型和大小）
+- 日志格式：`[YYYY-MM-DD HH:mm:ss.SSS] [LEVEL] 消息内容`
+
+#### 日志环境配置（`.env`）
+
+| 配置项             | 说明                 | 可选值                                          | 默认值           |
+| ------------------ | -------------------- | ----------------------------------------------- | ---------------- |
+| `LOG_FILE_PATH`    | 日志文件路径         | 任意路径                                        | `./logs/app.log` |
+| `LOG_OUTPUT_MODE`  | 输出模式             | `console` / `file` / `both`                     | `both`           |
+| `LOG_LEVEL`        | 日志级别             | `error`/`warn`/`info`/`debug`/`verbose`/`silly` | `info`           |
 
 ### ✅ 报表表格查询（已完成）
 
@@ -319,6 +332,8 @@ console.log(detail.templateId);
 | ---------------- | ------- | --- | ------------ |
 | axios            | ^1.18.1 | 运行时 | HTTP 请求      |
 | crypto-js        | ^4.2.0  | 运行时 | DES 密码加密     |
+| winston          | ^3.x    | 运行时 | 日志框架        |
+| dotenv           | ^16.x   | 运行时 | 环境变量配置      |
 | typescript       | ^5.8.3  | 开发  | 编译           |
 | @types/crypto-js | ^4.2.2  | 开发  | 类型定义         |
 | @types/node      | ^26.1.0 | 开发  | Node.js 类型定义 |
@@ -335,7 +350,7 @@ console.log(detail.templateId);
 ```
 src/lib/
 ├── seeyon-client.ts   # SeeyonClient 类（login, getPendingList, queryTableResult, getTodoDetail）+ 报表查询相关类型与常量 + 待办详情相关类型与常量 + getCellValue 辅助函数
-├── logger.ts          # setupLogger 拦截器 + safeStringify 工具函数
+├── logger.ts          # winston 日志框架 + setupLogger 拦截器 + safeStringify 工具函数 + .env 配置加载
 └── index.ts           # 导出入口
 ```
 

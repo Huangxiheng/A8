@@ -21,4 +21,5 @@ export type {
   TodoDetailParams,
   TodoDetailResult,
 } from './seeyon-client';
-export { safeStringify } from './logger';
+export { safeStringify, logger, loadLogConfig } from './logger';
+export type { LogConfig, LogOutputMode } from './logger';
