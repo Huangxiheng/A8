@@ -12,8 +12,12 @@ async function main() {
     debug: true,
   });
 
+  // 从环境变量读取用户名和密码，未配置时使用默认值
+  const username = process.env.SEYON_USERNAME || 'your_username';
+  const password = process.env.SEYON_PASSWORD || 'your_password';
+  
   // 登录
-  const loginResult = await client.login('your_username', 'your_password');
+  const loginResult = await client.login(username, password);
   logger.info(`登录结果: ${JSON.stringify(loginResult)}`);
 
   if (!loginResult.success) {

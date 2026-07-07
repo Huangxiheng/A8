@@ -32,8 +32,36 @@ npm install
 ### 运行示例
 
 ```bash
+# 使用默认用户名和密码（examples 中的硬编码值）
+npm run example
+
+# 或设置环境变量后运行
+SEYON_USERNAME=your_username SEYON_PASSWORD=your_password npm run example
+
+# 或通过 .env 文件配置后运行
+cp .env.example .env
+# 编辑 .env 文件设置 SEYON_USERNAME 和 SEYON_PASSWORD
 npm run example
 ```
+
+### 环境配置
+
+项目支持通过 `.env` 文件配置环境变量，参考 `.env.example`：
+
+```env
+# 日志配置
+LOG_FILE_PATH=./logs/app.log
+LOG_OUTPUT_MODE=both
+LOG_LEVEL=info
+
+# Seeyon API 认证配置
+# 用户名（未设置时使用 examples 中的默认值）
+SEYON_USERNAME=your_username
+# 密码（未设置时使用 examples 中的默认值）
+SEYON_PASSWORD=your_password
+```
+
+如需配置环境变量，请复制 `.env.example` 为 `.env` 并设置相应的值。
 
 ### 编译
 

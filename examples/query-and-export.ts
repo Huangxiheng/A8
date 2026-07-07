@@ -195,10 +195,14 @@ async function main() {
     debug: true,
   });
 
+  // 从环境变量读取用户名和密码，未配置时使用默认值
+  const username = process.env.SEYON_USERNAME || '1000664';
+  const password = process.env.SEYON_PASSWORD || 'qwer1234!';
+  
   // 登录
   logger.info('========================================');
   logger.info('正在登录...');
-  const loginResult = await client.login('1000664', 'qwer1234!');
+  const loginResult = await client.login(username, password);
   logger.info(`登录结果: ${JSON.stringify(loginResult)}`);
   if (!loginResult.success) {
     logger.error('登录失败，程序退出');
