@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "example": "tsx examples/example.ts",
-    "test": "tsx test/test-login.ts"
+    "export": "tsx examples/query-and-export.ts",
+    "demo:browser": "tsx examples/work-hour-edit.ts"
   },
   "directories": {
     "lib": "src/lib",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^26.1.0",
+    "playwright": "^1.57.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
